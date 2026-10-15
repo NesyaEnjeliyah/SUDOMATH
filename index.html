@@ -192,12 +192,6 @@ button.primary:hover{background:linear-gradient(135deg,#ff5fa2,#8b5cf6)}
   <li>Bentuk <b>termometer</b> abu-abu: angka harus <b>selalu makin besar</b>, mulai dari bohlam (bulatan) sampai ujungnya.</li>
  </ol>
  <svg id="ex" viewBox="0 0 7.4 2.3" style="width:100%;max-width:330px;display:block;margin:6px auto"></svg>
- <h3>Tingkat kesulitan</h3>
- <ul>
-  <li><b>Mudah</b>: cukup teknik dasar (hanya satu kandidat di kotak/unit) dan batas angka termometer.</li>
-  <li><b>Sedang</b>: perlu teknik seperti pointing/claiming atau pasangan kandidat.</li>
-  <li><b>Sulit</b>: perlu teknik lanjutan (mis. hidden pair) atau coba-coba. Dinilai otomatis oleh solver logika di game ini.</li>
- </ul>
  <h3>Skor</h3>
  <ul>
   <li>Dasar: Mudah 1000, Sedang 2000, Sulit 3000, ditambah bonus kecepatan (sampai +50% dari dasar, menyusut hingga batas 10/15/25 menit).</li>
@@ -264,14 +258,6 @@ function buildBoard(){
     }}
 }
 
-/* =================== GAMBAR TERMOMETER =================== 
-   TRIK PRESISI: SVG diberi viewBox="0 0 9 9" + preserveAspectRatio="none" dan
-   dibuat sebesar papan (position:absolute; inset:0). Artinya 1 satuan SVG =
-   tepat 1 kotak grid, berapa pun ukuran layar. Pusat kotak (r,c) di SVG selalu
-   (c+0.5, r+0.5): x = kolom, y = baris (JANGAN terbalik). Karena skalanya
-   ditangani browser, TIDAK perlu listener 'resize'. Ketebalan garis/bohlam
-   juga dalam satuan kotak (mis. 0.22 = 22% lebar kotak), jadi ikut membesar/mengecil.
-   Setiap termometer: <g> berisi polyline (batang) + circle (bohlam di titik pertama). */
 const TCOL = ['var(--thermo)'];
 const NS = 'http://www.w3.org/2000/svg';
 function mk(tag, attrs){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
@@ -304,7 +290,6 @@ function validate(){
     for(const [r,c] of g){ const v=board[r][c]; if(!v) continue; (seen[v]=seen[v]||[]).push([r,c]); }
     for(const v in seen) if(seen[v].length>1) seen[v].forEach(([r,c])=>bad.add(key(r,c)));
   }
-  // Aturan termometer: pasangan bersebelahan yang terisi harus naik ketat
   THERMOS.forEach((p,i) => {
     for(let k=1;k<p.length;k++){
       const a=board[p[k-1][0]][p[k-1][1]], b=board[p[k][0]][p[k][1]];
@@ -314,7 +299,6 @@ function validate(){
   return {bad, badT};
 }
 
-/* =================== UPDATE TAMPILAN =================== */
 function refresh(){
   const {bad,badT} = validate();
   let filled = 0;
@@ -387,7 +371,6 @@ function buildPad(){
   for(let n=1;n<=9;n++){ const b=document.createElement('button'); b.innerHTML=`${n}<small></small>`; b.setAttribute('aria-label','Angka '+n); b.onclick=()=>setValue(n); b.style.setProperty('--h', n*40-20); pad.appendChild(b); padBtns[n]=b; }
 }
 
-// Solver backtracking + aturan termometer. Mengembalikan {count, solution} (berhenti di `limit` solusi).
 function solve(puzzle, thermos, limit=2){
   const g = puzzle.map(r=>r.slice());
   // posisi tiap kotak pada termometer: tid, index
