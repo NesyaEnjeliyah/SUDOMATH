@@ -188,7 +188,7 @@ button.primary:hover{background:linear-gradient(135deg,#ff5fa2,#8b5cf6)}
 <div id="help" hidden onclick="if(event.target===this)closeHelp()"><div class="card">
  <h2>🔑 Tutorial Bermain Sudomath</h2>
  <ol>
-  <li>Isi kotak dengan angka 1–9. Tiap baris, kolom, dan blok 3×3 tidak boleh punya angka yang sama (aturan Sudoku biasa).</li>
+  <li>Isi kotak dengan angka 1–9. Tiap baris, kolom, dan blok 3×3 tidak boleh punya angka yang sama.</li>
   <li>Bentuk <b>termometer</b> abu-abu: angka harus <b>selalu makin besar</b>, mulai dari bohlam (bulatan) sampai ujungnya.</li>
  </ol>
  <svg id="ex" viewBox="0 0 7.4 2.3" style="width:100%;max-width:330px;display:block;margin:6px auto"></svg>
@@ -705,7 +705,7 @@ function exRow(y, ds, bad, label){
     ds.map((d,i)=>`<text x="${i+.5}" y="${y+.52}" font-size=".6" text-anchor="middle" dominant-baseline="central" style="fill:${i===bad?'var(--err)':'var(--fg)'}">${d}</text>`).join('') +
     `<text x="4.3" y="${y+.52}" font-size=".5" dominant-baseline="central" style="fill:var(--fg)">${label}</text>`;
 }
-$('ex').innerHTML = exRow(0,[2,5,6,8],-1,'✓ sah') + exRow(1.2,[2,5,4,8],2,'✗ salah');
+$('ex').innerHTML = exRow(0,[2,5,6,8],-1,'✓ benar') + exRow(1.2,[2,5,4,8],2,'✗ salah');
 // --- UX: konfirmasi dua ketukan (tanpa dialog browser), pilihan tingkat, layar menang ---
 function twice(btn, fn){
   if(btn._t){ clearTimeout(btn._t); btn._t = null; btn.innerHTML = btn._orig; btn.classList.remove('armed'); fn(); return; }
