@@ -36,6 +36,8 @@ button:disabled{opacity:.3;cursor:default}
 #info{flex:1;min-width:0;font-size:.9rem;font-weight:600;line-height:1.3}
 #trow{display:flex;align-items:center;gap:6px}
 #timer{font-variant-numeric:tabular-nums;font-size:1.05rem;font-weight:600}
+#timer.low{color:var(--err);animation:tlow 1s ease-in-out infinite}
+@keyframes tlow{50%{opacity:.45}}
 #msg{min-height:1.5em;margin-top:10px;font-size:.9rem;text-align:center}
 #side{display:flex;flex-direction:column;gap:10px}
 @media (min-width:880px){
@@ -79,8 +81,8 @@ button:disabled{opacity:.3;cursor:default}
 #stats button{font-size:.85rem;padding:6px 10px}
 
 /* --- modal (tutorial & layar menang) --- */
-#help,#win{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:calc(12px + env(safe-area-inset-top,0px)) 12px calc(12px + env(safe-area-inset-bottom,0px))}
-#help[hidden],#win[hidden]{display:none}
+#help,#win,#lose{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:calc(12px + env(safe-area-inset-top,0px)) 12px calc(12px + env(safe-area-inset-bottom,0px))}
+#help[hidden],#win[hidden],#lose[hidden]{display:none}
 .card{background:var(--bg);color:var(--fg);width:100%;max-width:460px;max-height:100%;overflow:auto;border-radius:14px;padding:16px 18px;font-size:.92rem;line-height:1.45}
 .card h2{margin:0 0 8px;font-size:1.15rem} .card h3{margin:12px 0 4px;font-size:.95rem}
 .card ol,.card ul{margin:4px 0;padding-left:20px}
@@ -188,10 +190,20 @@ button.primary:hover{background:linear-gradient(135deg,#ff5fa2,#8b5cf6)}
 <div id="help" hidden onclick="if(event.target===this)closeHelp()"><div class="card">
  <h2>🔑 Tutorial Bermain Sudomath</h2>
  <ol>
-  <li>Isi kotak dengan angka 1–9. Tiap baris, kolom, dan blok 3×3 tidak boleh punya angka yang sama.</li>
+  <li>Isi kotak dengan angka 1–9. Tiap baris, kolom, dan blok 3×3 tidak boleh punya angka yang sama (aturan Sudoku biasa).</li>
   <li>Bentuk <b>termometer</b> abu-abu: angka harus <b>selalu makin besar</b>, mulai dari bohlam (bulatan) sampai ujungnya.</li>
  </ol>
  <svg id="ex" viewBox="0 0 7.4 2.3" style="width:100%;max-width:330px;display:block;margin:6px auto"></svg>
+ <h3>Tingkat kesulitan</h3>
+ <ul>
+  <li><b>Mudah</b>: cukup teknik dasar (hanya satu kandidat di kotak/unit) dan batas angka termometer.</li>
+  <li><b>Sedang</b>: perlu teknik seperti pointing/claiming atau pasangan kandidat.</li>
+  <li><b>Sulit</b>: perlu teknik lanjutan (mis. hidden pair) atau coba-coba. Dinilai otomatis oleh solver logika di game ini.</li>
+ </ul>
+ <h3>Batas waktu</h3>
+ <ul>
+  <li>Mudah <b>5 menit</b>, Sedang <b>10 menit</b>, Sulit <b>15 menit</b>. Waktu berjalan mundur; saat habis papan terkunci.</li>
+ </ul>
  <h3>Skor</h3>
  <ul>
   <li>Dasar: Mudah 1000, Sedang 2000, Sulit 3000, ditambah bonus kecepatan (sampai +50% dari dasar, menyusut hingga batas 10/15/25 menit).</li>
@@ -206,6 +218,7 @@ button.primary:hover{background:linear-gradient(135deg,#ff5fa2,#8b5cf6)}
  </ul>
  <button class="go" onclick="closeHelp()">Mengerti, mulai!</button>
 </div></div>
+<div id="lose" hidden onclick="if(event.target===this)closeLose()"><div class="card" style="text-align:center"><div style="font-size:2.4rem">⏰</div><h2>Waktu habis!</h2><p id="loseTxt"></p><div class="row"><button class="primary" onclick="closeLose();newGame()">🎲 Soal baru</button><button onclick="closeLose()">Tutup</button></div></div></div>
 <div id="win" hidden onclick="if(event.target===this)closeWin()"><div class="card" style="text-align:center"><div style="font-size:2.4rem">🎉</div><h2>Selesai!</h2><p id="winTxt"></p><div class="row"><button class="primary" onclick="closeWin();newGame()">🎲 Soal baru</button><button onclick="closeWin()">Tutup</button></div></div></div>
 <script>
 /* =================== STRUKTUR DATA =================== */
@@ -242,8 +255,8 @@ const undoSt = [], redoSt = [];                           // riwayat snapshot JS
 const stateStr = () => JSON.stringify({b:board, n:notes, a:autoOn, nb:autoBackup});
 const snap = () => { undoSt.push(stateStr()); redoSt.length = 0; };
 function restore(str){ const o = JSON.parse(str); for(let r=0;r<9;r++)for(let c=0;c<9;c++){ board[r][c]=o.b[r][c]; notes[r][c]=o.n[r][c]; } autoOn=!!o.a; autoBackup=o.nb||null; syncAuto(); refresh(); }
-function undo(){ if(pManual || !undoSt.length) return; redoSt.push(stateStr()); restore(undoSt.pop()); }
-function redo(){ if(pManual || !redoSt.length) return; undoSt.push(stateStr()); restore(redoSt.pop()); }
+function undo(){ if(pManual || timeUp || !undoSt.length) return; redoSt.push(stateStr()); restore(undoSt.pop()); }
+function redo(){ if(pManual || timeUp || !redoSt.length) return; undoSt.push(stateStr()); restore(redoSt.pop()); }
 function toggleNote(){ noteMode = !noteMode; document.getElementById('bNote').classList.toggle('on', noteMode); document.getElementById('pad').classList.toggle('notes', noteMode); }                                       // cellEls[r][c] -> elemen DOM
 
 /* =================== RENDER PAPAN =================== */
@@ -258,6 +271,14 @@ function buildBoard(){
     }}
 }
 
+/* =================== GAMBAR TERMOMETER =================== 
+   TRIK PRESISI: SVG diberi viewBox="0 0 9 9" + preserveAspectRatio="none" dan
+   dibuat sebesar papan (position:absolute; inset:0). Artinya 1 satuan SVG =
+   tepat 1 kotak grid, berapa pun ukuran layar. Pusat kotak (r,c) di SVG selalu
+   (c+0.5, r+0.5): x = kolom, y = baris (JANGAN terbalik). Karena skalanya
+   ditangani browser, TIDAK perlu listener 'resize'. Ketebalan garis/bohlam
+   juga dalam satuan kotak (mis. 0.22 = 22% lebar kotak), jadi ikut membesar/mengecil.
+   Setiap termometer: <g> berisi polyline (batang) + circle (bohlam di titik pertama). */
 const TCOL = ['var(--thermo)'];
 const NS = 'http://www.w3.org/2000/svg';
 function mk(tag, attrs){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
@@ -290,6 +311,7 @@ function validate(){
     for(const [r,c] of g){ const v=board[r][c]; if(!v) continue; (seen[v]=seen[v]||[]).push([r,c]); }
     for(const v in seen) if(seen[v].length>1) seen[v].forEach(([r,c])=>bad.add(key(r,c)));
   }
+  // Aturan termometer: pasangan bersebelahan yang terisi harus naik ketat
   THERMOS.forEach((p,i) => {
     for(let k=1;k<p.length;k++){
       const a=board[p[k-1][0]][p[k-1][1]], b=board[p[k][0]][p[k][1]];
@@ -299,6 +321,7 @@ function validate(){
   return {bad, badT};
 }
 
+/* =================== UPDATE TAMPILAN =================== */
 function refresh(){
   const {bad,badT} = validate();
   let filled = 0;
@@ -324,15 +347,15 @@ function refresh(){
   const cnt = Array(10).fill(0); for(let r=0;r<9;r++)for(let c=0;c<9;c++) cnt[board[r][c]]++;
   for(let n=1;n<=9;n++) if(padBtns[n]){ padBtns[n].disabled = cnt[n]>=9; padBtns[n].lastChild.textContent = cnt[n]>=9 ? '' : 9-cnt[n]; }
   const msg=document.getElementById('msg');
-  if(filled===81 && bad.size===0 && timerOn){ timerOn=false; doneSec=elapsed(); $('timer').textContent=fmt(doneSec); recordWin(); showWin(); }
-  msg.textContent = (filled===81 && bad.size===0) ? '🎉 Selesai! '+fmt(doneSec||0)+winNote : (bad.size? '⚠️ Ada bentrok aturan (merah).' : '');
+  if(filled===81 && bad.size===0 && timerOn){ timerOn=false; doneSec=elapsed(); $('timer').textContent=fmt(remaining()); $('timer').classList.remove('low'); recordWin(); showWin(); }
+  msg.textContent = timeUp ? '⏰ Waktu habis! Tekan Soal baru untuk main lagi.' : (filled===81 && bad.size===0) ? '🎉 Selesai! '+fmt(doneSec||0)+winNote : (bad.size? '⚠️ Ada bentrok aturan (merah).' : '');
   save();
 }
 
 /* =================== INTERAKSI =================== */
 function select(r,c){ sel={r,c}; refresh(); }
 function setValue(v){
-  if(pManual || !sel || given[sel.r][sel.c]) return;
+  if(pManual || timeUp || !sel || given[sel.r][sel.c]) return;
   const {r,c} = sel;
   if(noteMode){                                   // mode catatan: toggle kandidat (hanya di kotak kosong)
     if(board[r][c]) return;
@@ -352,7 +375,8 @@ document.addEventListener('keydown', e => {
   if(splashOpen){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); closeSplash(); } return; }
   if(e.key==='Escape' && !$('help').hidden){ closeHelp(); return; }
   if(e.key==='Escape' && !$('win').hidden){ closeWin(); return; }
-  if(pManual) return;
+  if(e.key==='Escape' && !$('lose').hidden){ closeLose(); return; }
+  if(pManual || timeUp) return;
   const k = e.key.toLowerCase();
   if((e.ctrlKey||e.metaKey) && k==='z'){ e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if((e.ctrlKey||e.metaKey) && k==='y'){ e.preventDefault(); redo(); return; }
@@ -371,6 +395,7 @@ function buildPad(){
   for(let n=1;n<=9;n++){ const b=document.createElement('button'); b.innerHTML=`${n}<small></small>`; b.setAttribute('aria-label','Angka '+n); b.onclick=()=>setValue(n); b.style.setProperty('--h', n*40-20); pad.appendChild(b); padBtns[n]=b; }
 }
 
+// Solver backtracking + aturan termometer. Mengembalikan {count, solution} (berhenti di `limit` solusi).
 function solve(puzzle, thermos, limit=2){
   const g = puzzle.map(r=>r.slice());
   // posisi tiap kotak pada termometer: tid, index
@@ -577,7 +602,7 @@ function toggleAuto(){
   syncAuto(); refresh();
 }
 function checkBoard(){
-  if(pManual) return;
+  if(pManual || timeUp) return;
   if(doneSec === null){ checksUsed++; save(); }                   // tiap Cek mengurangi skor
   // Tandai salah jika angka user berbeda dari kunci (bukan hanya bentrok langsung)
   let wrong=0, empty=0;
@@ -587,7 +612,7 @@ function checkBoard(){
   if(doneSec === null) m.textContent += ` (−${CHECK_COST} poin)`;
 }
 function hint(){
-  if(pManual || doneSec !== null) return;
+  if(pManual || timeUp || doneSec !== null) return;
   if(hintsUsed >= MAX_HINTS){ $('msg').textContent = `💡 Hint habis (maksimal ${MAX_HINTS} per soal).`; return; }
   // Isi kotak terpilih (jika kosong/salah & bukan given); kalau tidak ada, pilih kotak kosong acak.
   let t = sel && !given[sel.r][sel.c] && board[sel.r][sel.c]!==SOLUTION[sel.r][sel.c] ? sel : null;
@@ -602,15 +627,15 @@ function newGame(){
     const g = generate(lv.value);
     PUZZLE = g.puzzle; THERMOS = g.thermos; SOLUTION = g.solution;
     for(let r=0;r<9;r++)for(let c=0;c<9;c++){ board[r][c]=PUZZLE[r][c]; given[r][c]=PUZZLE[r][c]!==0; notes[r][c]=0; }
-    sel = null; undoSt.length = redoSt.length = 0; t0 = Date.now(); timerOn = true; doneSec = null; clearPause(); hintsUsed = 0; winNote = ''; checksUsed = 0; winScore = null; autoOn = false; autoBackup = null; syncAuto();
+    sel = null; undoSt.length = redoSt.length = 0; t0 = Date.now(); timerOn = true; timeUp = false; doneSec = null; clearPause(); hintsUsed = 0; winNote = ''; checksUsed = 0; winScore = null; autoOn = false; autoBackup = null; syncAuto();
     curLevel = g.level;                                             // statistik mengikuti tingkat HASIL penilaian solver, bukan sekadar permintaan
     stats[curLevel].played++; saveStats();
-    blockSnap = null; drawThermos(); refresh();
+    blockSnap = null; drawThermos(); refresh(); renderTimer();
     infoText = `${LABEL[g.level]} · ${g.givens} angka awal · ${g.thermos.length} termometer · teknik tersulit: ${TIER_NAME[g.tier]}` + (g.level!==lv.value ? ` (diminta ${LABEL[lv.value]})` : '');
     save();
   }, 30);
 }
-function resetBoard(){ blockSnap = null; for(let r=0;r<9;r++)for(let c=0;c<9;c++) board[r][c]=PUZZLE[r][c], notes[r][c]=0; sel=null; undoSt.length=redoSt.length=0; t0=Date.now(); timerOn=true; doneSec=null; clearPause(); hintsUsed=0; winNote=''; checksUsed=0; winScore=null; autoOn=false; autoBackup=null; syncAuto(); refresh(); }
+function resetBoard(){ blockSnap = null; for(let r=0;r<9;r++)for(let c=0;c<9;c++) board[r][c]=PUZZLE[r][c], notes[r][c]=0; sel=null; undoSt.length=redoSt.length=0; t0=Date.now(); timerOn=true; timeUp=false; doneSec=null; closeLose(); clearPause(); hintsUsed=0; winNote=''; checksUsed=0; winScore=null; autoOn=false; autoBackup=null; syncAuto(); refresh(); renderTimer(); }
 
 /* =================== STORAGE: PROGRES & STATISTIK ===================
    localStorage bisa gagal/kosong (mode privat, diblokir) -> semua akses dibungkus try/catch
@@ -638,15 +663,32 @@ let t0 = Date.now(), timerOn = true, doneSec = null, hintsUsed = 0, winNote = ''
    elapsed() juga "dibekukan" di pauseStart selama jeda, agar penyimpanan di latar belakang tidak menghitung waktu jeda. */
 let pauseStart = null, pManual = false;
 const elapsed = () => Math.floor(((pauseStart ?? Date.now()) - t0)/1000);
+/* BATAS WAKTU (detik) per tingkat. elapsed() tetap menghitung naik (dipakai skor & rekor);
+   yang ditampilkan di layar adalah sisa waktu = batas - elapsed(). 'sample' = soal contoh bawaan. */
+const TIME_LIMIT = {easy:5*60, medium:10*60, hard:15*60, sample:10*60};
+let timeUp = false;
+const limitSec = () => TIME_LIMIT[curLevel] ?? TIME_LIMIT.medium;
+const remaining = () => Math.max(0, limitSec() - elapsed());
+function renderTimer(){ const t=$('timer'), r=remaining(); t.textContent = fmt(r); t.classList.toggle('low', timerOn && r>0 && r<=60); }
+function onTimeUp(){
+  if(timeUp || doneSec!==null) return;
+  timeUp = true; timerOn = false; sel = null; clearPause();
+  $('timer').textContent = fmt(0); $('timer').classList.remove('low');
+  try{ SFX.bad(); }catch(e){} refresh();
+  const left = board.reduce((n,row)=>n+row.filter(v=>!v).length, 0);
+  $('loseTxt').innerHTML = `Batas waktu ${LABEL[curLevel] || 'soal contoh'} (${limitSec()/60} menit) sudah habis.<br>Masih ada <b>${left}</b> kotak kosong.`;
+  setTimeout(() => { $('lose').hidden = false; }, 300);
+}
+function closeLose(){ $('lose').hidden = true; }
 function syncPauseUI(){ $('veil').hidden = !pManual; $('bPause').textContent = pManual ? '▶' : '⏸'; }
 // Jeda aktif jika game berjalan DAN (tab tersembunyi ATAU pemain menekan pause). Saat lanjut, t0 digeser sebesar lama jeda.
 function updatePause(){
   const want = timerOn && (document.hidden || pManual);
   if(want && pauseStart === null){ pauseStart = Date.now(); save(); }
-  else if(!want && pauseStart !== null){ t0 += Date.now() - pauseStart; pauseStart = null; $('timer').textContent = fmt(elapsed()); }
+  else if(!want && pauseStart !== null){ t0 += Date.now() - pauseStart; pauseStart = null; renderTimer(); }
   syncPauseUI();
 }
-function togglePause(){ if(!timerOn) return; pManual = !pManual; updatePause(); }
+function togglePause(){ if(!timerOn || timeUp) return; pManual = !pManual; updatePause(); }
 function clearPause(){ pauseStart = null; pManual = false; syncPauseUI(); }   // dipakai saat soal baru / reset
 document.addEventListener('visibilitychange', updatePause);
 
@@ -656,7 +698,7 @@ const saveStats = () => store.set(STATS_KEY, stats);
 
 function save(){
   store.set(SAVE_KEY, {P:PUZZLE, T:THERMOS, S:SOLUTION, b:board, n:notes, lvl:curLevel, info:infoText,
-                       el: doneSec!==null ? doneSec : elapsed(), done: doneSec!==null, h:hintsUsed, ck:checksUsed, ao:autoOn, nb:autoBackup});
+                       el: doneSec!==null ? doneSec : elapsed(), done: doneSec!==null, h:hintsUsed, ck:checksUsed, ao:autoOn, nb:autoBackup, tu:timeUp});
 }
 function loadSave(){
   const o = store.get(SAVE_KEY);
@@ -666,7 +708,8 @@ function loadSave(){
   for(let r=0;r<9;r++)for(let c=0;c<9;c++){ board[r][c]=o.b[r][c]; notes[r][c]=o.n[r][c]; given[r][c]=PUZZLE[r][c]!==0; }
   curLevel=o.lvl||'sample'; hintsUsed=o.h||0; checksUsed=o.ck||0; autoOn=!!o.ao; autoBackup=Array.isArray(o.nb)?o.nb:null; syncAuto(); infoText=o.info||infoText;
   t0 = Date.now() - (o.el||0)*1000;
-  if(o.done){ timerOn=false; doneSec=o.el; $('timer').textContent=fmt(doneSec); }
+  if(o.done){ timerOn=false; doneSec=o.el; $('timer').textContent=fmt(remaining()); }
+  else if(o.tu){ timeUp=true; timerOn=false; $('timer').textContent=fmt(0); }
 }
 function recordWin(){
   if(!stats[curLevel]) return;                         // soal contoh tidak masuk statistik
@@ -687,7 +730,7 @@ function renderStats(){
 function toggleStats(){ const p=$('stats'); p.hidden=!p.hidden; renderStats(); }
 function clearStats(){ LEVELS.forEach(l => stats[l]={played:0,won:0,best:null,score:null}); saveStats(); renderStats(); }
 
-setInterval(() => { if(!timerOn) return; $('timer').textContent = fmt(elapsed()); if(++tick%10===0) save(); }, 500);
+setInterval(() => { if(!timerOn) return; renderTimer(); if(remaining()<=0) onTimeUp(); if(++tick%10===0) save(); }, 500);
 const THEMES = ['auto','light','dark'], ICON = {auto:'🌗', light:'☀️', dark:'🌙'};
 let theme = store.get('thermo-sudoku-theme') || 'auto';
 function applyTheme(){
@@ -705,14 +748,14 @@ function exRow(y, ds, bad, label){
     ds.map((d,i)=>`<text x="${i+.5}" y="${y+.52}" font-size=".6" text-anchor="middle" dominant-baseline="central" style="fill:${i===bad?'var(--err)':'var(--fg)'}">${d}</text>`).join('') +
     `<text x="4.3" y="${y+.52}" font-size=".5" dominant-baseline="central" style="fill:var(--fg)">${label}</text>`;
 }
-$('ex').innerHTML = exRow(0,[2,5,6,8],-1,'✓ benar') + exRow(1.2,[2,5,4,8],2,'✗ salah');
+$('ex').innerHTML = exRow(0,[2,5,6,8],-1,'✓ sah') + exRow(1.2,[2,5,4,8],2,'✗ salah');
 // --- UX: konfirmasi dua ketukan (tanpa dialog browser), pilihan tingkat, layar menang ---
 function twice(btn, fn){
   if(btn._t){ clearTimeout(btn._t); btn._t = null; btn.innerHTML = btn._orig; btn.classList.remove('armed'); fn(); return; }
   btn._orig = btn.innerHTML; btn.innerHTML = 'Yakin? Ketuk lagi'; btn.classList.add('armed');
   btn._t = setTimeout(() => { btn._t = null; btn.innerHTML = btn._orig; btn.classList.remove('armed'); }, 3000);
 }
-const hasProgress = () => doneSec === null && board.some((row,r) => row.some((v,c) => v !== PUZZLE[r][c]));
+const hasProgress = () => doneSec === null && !timeUp && board.some((row,r) => row.some((v,c) => v !== PUZZLE[r][c]));
 function startNew(btn){ hasProgress() ? twice(btn, newGame) : newGame(); }
 function askReset(btn){ if(hasProgress()) twice(btn, resetBoard); }
 function setLvl(v){
@@ -810,7 +853,7 @@ const SFX = (() => {
 })();
 document.querySelectorAll('#tools button').forEach((b,i) => b.style.setProperty('--h', i*43+8));
 setLvl(store.get('thermo-sudoku-lvl') || 'medium');
-buildBoard(); loadSave(); drawThermos(); buildPad(); refresh();
+buildBoard(); loadSave(); drawThermos(); buildPad(); refresh(); renderTimer();
 /* --- Layar pembuka: waktu dijeda sampai pemain menekan Mulai/Lanjutkan (sekaligus gestur yang membuka izin audio) --- */
 let splashOpen = false, splashPaused = false;
 function openSplash(){
