@@ -271,14 +271,6 @@ function buildBoard(){
     }}
 }
 
-/* =================== GAMBAR TERMOMETER =================== 
-   TRIK PRESISI: SVG diberi viewBox="0 0 9 9" + preserveAspectRatio="none" dan
-   dibuat sebesar papan (position:absolute; inset:0). Artinya 1 satuan SVG =
-   tepat 1 kotak grid, berapa pun ukuran layar. Pusat kotak (r,c) di SVG selalu
-   (c+0.5, r+0.5): x = kolom, y = baris (JANGAN terbalik). Karena skalanya
-   ditangani browser, TIDAK perlu listener 'resize'. Ketebalan garis/bohlam
-   juga dalam satuan kotak (mis. 0.22 = 22% lebar kotak), jadi ikut membesar/mengecil.
-   Setiap termometer: <g> berisi polyline (batang) + circle (bohlam di titik pertama). */
 const TCOL = ['var(--thermo)'];
 const NS = 'http://www.w3.org/2000/svg';
 function mk(tag, attrs){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
@@ -295,7 +287,6 @@ function drawThermos(){
 }
 
 /* =================== VALIDASI =================== */
-// Mengembalikan {cells:Set("r,c") bermasalah, thermos:Set(index) bermasalah}
 function validate(){
   const bad = new Set(), badT = new Set(), key=(r,c)=>r+','+c;
   // Aturan klasik: cari duplikat di baris, kolom, blok
@@ -339,7 +330,6 @@ function refresh(){
   THERMOS.forEach((_,i)=>{ document.getElementById('t'+i).style.color = badT.has(i)?'var(--thermo-bad)':TCOL[i%TCOL.length]; });
   document.getElementById('board').classList.toggle('win', filled===81 && bad.size===0);
   checkBlocks();
-  // sisa nyawa hint (hintsUsed ikut tersimpan, Undo tidak mengembalikan hint)
   const left = Math.max(0, MAX_HINTS - hintsUsed);
   document.getElementById('info').textContent = `💡 Hint tersisa: ${left}/${MAX_HINTS}`;   // keterangan di atas papan
   document.getElementById('bHint').disabled = left === 0;
@@ -467,10 +457,7 @@ function placeThermos(sol, count, [minL,maxL]){
 }
 
 /* ---------- PENILAI KESULITAN ----------
-   Menyelesaikan soal seperti manusia dengan kandidat (bitmask), selalu memakai teknik TERMUDAH yang bisa maju:
-   tier 1 Single (naked/hidden) · tier 2 Batas termometer (kotak harus > kotak sebelumnya, merambat sepanjang jalur)
-   tier 3 Pointing/Claiming + Naked pair · tier 4 Hidden pair · tier 5 tidak bisa diselesaikan logika ini (butuh coba-coba).
-   Nilai soal = tier tertinggi yang terpaksa dipakai. Semua teknik "sound", jadi soal yang selesai dengan logika pasti unik. */
+    */
 const UNITS = [];                                   // indeks 3i = baris i, 3i+1 = kolom i, 3i+2 = blok i
 for(let i=0;i<9;i++){
   UNITS.push([...Array(9)].map((_,j)=>[i,j]), [...Array(9)].map((_,j)=>[j,i]));
